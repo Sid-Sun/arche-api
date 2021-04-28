@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-func CreateUserHandler(svc service.Service, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
+func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
@@ -70,7 +70,7 @@ func CreateUserHandler(svc service.Service, cfg *config.JWTConfig, lgr *zap.Logg
 	}
 }
 
-func LoginUserHandler(svc service.Service, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
+func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {

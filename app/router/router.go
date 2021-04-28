@@ -8,11 +8,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewRouter(svc service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) *chi.Mux {
+func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) *chi.Mux {
 	rtr := chi.NewRouter()
 
-	rtr.Post("/v1/signup", handlers.CreateUserHandler(svc, jwtCfg, lgr))
-	rtr.Post("/v1/login", handlers.LoginUserHandler(svc, jwtCfg, lgr))
+	rtr.Post("/v1/signup", handlers.CreateUserHandler(svc.Users, jwtCfg, lgr))
+	rtr.Post("/v1/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))
 
 	return rtr
 }
