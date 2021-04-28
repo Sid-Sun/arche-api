@@ -25,6 +25,7 @@ func (u *users) Get(emailID string) (types.User, error) {
 	row := u.db.QueryRow(query, sql.Named("email", emailID))
 	err := row.Scan(&userID, &encryptionKey, &keyHash)
 	if err != nil {
+		// TODO: Add Logging
 		return types.User{}, err
 	}
 
@@ -45,10 +46,12 @@ VALUES (@email, @key, @hash);`
 	row := u.db.QueryRow(query, sql.Named("email", emailID), sql.Named("key", encryptionKey), sql.Named("hash", keyHash))
 	err := row.Err()
 	if err != nil {
+		// TODO: Add Logging
 		return 0, err
 	}
 	err = row.Scan(&userID)
 	if err != nil {
+		// TODO: Add Logging
 		return 0, err
 	}
 
