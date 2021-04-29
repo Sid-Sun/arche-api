@@ -16,3 +16,16 @@ type AccessTokenClaims struct {
 	EncryptionKey []byte `json:"encryption_key"`
 	jwt.StandardClaims
 }
+
+type CreateFolderRequest struct {
+	Name string `json:"name"`
+}
+
+type CreateFolderResponse struct {
+	Name     string   `json:"name"`
+	FolderID FolderID `json:"folder_id"`
+}
+
+type DeleteFolderRequest struct {
+	FolderID FolderID `json:"folder_id"`
+}
