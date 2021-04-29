@@ -55,7 +55,7 @@ func (f folders) GetAll(userClaims types.AccessTokenClaims) ([]types.Folder, err
 		return []types.Folder{}, err
 	}
 
-	for _, folder := range fldrs {
+	for index, folder := range fldrs {
 		name, err := base64.StdEncoding.DecodeString(folder.Name)
 		if err != nil {
 			// TODO: Add Logging
@@ -63,6 +63,7 @@ func (f folders) GetAll(userClaims types.AccessTokenClaims) ([]types.Folder, err
 		}
 
 		folder.Name = string(utils.CFBDecrypt(name, blockCipher))
+		fldrs[index] = folder
 	}
 
 	return fldrs, nil
