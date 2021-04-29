@@ -3,8 +3,12 @@ package types
 import "github.com/dgrijalva/jwt-go"
 
 type UserRequest struct {
-	Email    string
-	Password string
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type UserResponse struct {
+	AuthenticationToken string `json:"authentication_token"`
 }
 
 type AccessTokenClaims struct {

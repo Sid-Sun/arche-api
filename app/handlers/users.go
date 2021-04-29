@@ -62,7 +62,18 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 			return
 		}
 
-		_, err = w.Write([]byte(tkn))
+		resp := types.UserResponse{
+			AuthenticationToken: tkn,
+		}
+
+		d, err = json.Marshal(resp)
+		if err != nil {
+			// TODO: Add Logging
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		_, err = w.Write(d)
 		if err != nil {
 			// TODO: Add Logging
 			return
@@ -130,7 +141,18 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 			return
 		}
 
-		_, err = w.Write([]byte(tkn))
+		resp := types.UserResponse{
+			AuthenticationToken: tkn,
+		}
+
+		d, err = json.Marshal(resp)
+		if err != nil {
+			// TODO: Add Logging
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		_, err = w.Write(d)
 		if err != nil {
 			// TODO: Add Logging
 			return
