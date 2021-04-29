@@ -6,12 +6,17 @@ import (
 )
 
 type Service struct {
-	Users UsersService
+	Users   UsersService
+	Folders FoldersService
 }
 
 func NewDBService(db *database.DB, lgr *zap.Logger) *Service {
 	return &Service{
 		Users: &users{
+			db:  db,
+			lgr: lgr,
+		},
+		Folders: &folders{
 			db:  db,
 			lgr: lgr,
 		},
