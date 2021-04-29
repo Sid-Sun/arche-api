@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/sid-sun/arche-api/app/types"
 	"go.uber.org/zap"
 )
@@ -58,20 +59,21 @@ func (f *folders) Get(userID types.UserID) ([]types.Folder, error) {
 
 	return folders, nil
 }
+
 func (f *folders) Delete(folderID types.FolderID, userID types.UserID) error {
 	query := `DELETE FROM folders WHERE folder_id=@folder_id AND user_id=@user_id`
 
-	row := f.db.QueryRow(query, sql.Named("@folder_id", folderID), sql.Named("user_id", userID))
-	err := row.Err()
+	res, err := f.db.Exec(query, sql.Named("folder_id", folderID), sql.Named("user_id", userID))
 	if err != nil {
 		// TODO: Add Logging
 		return err
 	}
 
-	err = row.Scan(&folderID)
-	if err != nil {
-		// TODO: Add Logging
-		return err
+	if count, err := res.RowsAffected(); err != nil || count == 0 {
+		if err != nil {
+			return err
+		}
+		return errors.New("no records were deleted")
 	}
 
 	return nil
