@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/sid-sun/arche-api/app/service"
 	"github.com/sid-sun/arche-api/app/types"
-	"github.com/sid-sun/arche-api/app/utils"
 	"github.com/sid-sun/arche-api/config"
 	"go.uber.org/zap"
 	"io/ioutil"
@@ -13,18 +12,8 @@ import (
 
 func CreateFolderHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		token := req.Header.Get("authentication_token")
-		if token == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
 		var claims types.AccessTokenClaims
-		var err error
-		if claims, err = utils.ValidateJWT(token, cfg.GetSecret(), lgr); err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
+		claims = req.Context().Value("claims").(types.AccessTokenClaims)
 
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
@@ -70,19 +59,8 @@ func CreateFolderHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr 
 
 func GetFoldersHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		token := req.Header.Get("authentication_token")
-		if token == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
 		var claims types.AccessTokenClaims
-		var err error
-		if claims, err = utils.ValidateJWT(token, cfg.GetSecret(), lgr); err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
+		claims = req.Context().Value("claims").(types.AccessTokenClaims)
 
 		folders, err := svc.GetAll(claims)
 		if err != nil {
@@ -108,19 +86,8 @@ func GetFoldersHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr *z
 
 func DeleteFolder(svc service.FoldersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		token := req.Header.Get("authentication_token")
-		if token == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
 		var claims types.AccessTokenClaims
-		var err error
-		if claims, err = utils.ValidateJWT(token, cfg.GetSecret(), lgr); err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
+		claims = req.Context().Value("claims").(types.AccessTokenClaims)
 
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
