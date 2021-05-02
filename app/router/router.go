@@ -26,5 +26,14 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 		r.Delete("/delete", handlers.DeleteFolder(svc.Folders, lgr))
 	})
 
+	rtr.Route("/v1/notes", func(r chi.Router) {
+		r.Use(middlewares.JWTAuth(jwtCfg, lgr))
+
+		r.Post("/create", handlers.CreateNoteHandler(svc.Notes, lgr))
+		r.Put("/update", handlers.UpdateNoteHandler(svc.Notes, lgr))
+		r.Get("/getall", handlers.GetNotesHandler(svc.Notes, lgr))
+		r.Delete("/delete", handlers.DeleteNoteHandler(svc.Notes, lgr))
+	})
+
 	return rtr
 }

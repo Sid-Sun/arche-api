@@ -29,3 +29,24 @@ type CreateFolderResponse struct {
 type DeleteFolderRequest struct {
 	FolderID FolderID `json:"folder_id"`
 }
+
+type CreateNoteResponse struct {
+	NoteID NoteID `json:"note_id"`
+}
+
+type DeleteNoteRequest struct {
+	NoteID NoteID `json:"note_id"`
+}
+
+type CreateNoteRequest struct {
+	Name     string   `json:"name"`
+	Data     string   `json:"data"`
+	FolderID FolderID `json:"folder_id"`
+}
+
+type UpdateNoteRequest struct {
+	Name     string   `json:"name"`
+	Data     string   `json:"data"`
+	NoteID   NoteID   `json:"note_id"`
+	FolderID FolderID `json:"folder_id"`
+}
