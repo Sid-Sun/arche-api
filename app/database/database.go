@@ -8,6 +8,7 @@ import (
 type DB struct {
 	Users   UsersTable
 	Folders FoldersTable
+	Notes   NotesTable
 }
 
 func NewDBInstance(dbClient *sql.DB, lgr *zap.Logger) *DB {
@@ -17,6 +18,10 @@ func NewDBInstance(dbClient *sql.DB, lgr *zap.Logger) *DB {
 			db:  dbClient,
 		},
 		Folders: &folders{
+			lgr: lgr,
+			db:  dbClient,
+		},
+		Notes: &notes{
 			lgr: lgr,
 			db:  dbClient,
 		},
