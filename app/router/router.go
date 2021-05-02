@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/sid-sun/arche-api/app/handlers"
 	"github.com/sid-sun/arche-api/app/middlewares"
 	"github.com/sid-sun/arche-api/app/service"
@@ -11,6 +12,8 @@ import (
 
 func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) *chi.Mux {
 	rtr := chi.NewRouter()
+
+	rtr.Use(middleware.Recoverer)
 
 	rtr.Post("/v1/signup", handlers.CreateUserHandler(svc.Users, jwtCfg, lgr))
 	rtr.Post("/v1/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))
