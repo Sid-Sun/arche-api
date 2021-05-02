@@ -20,7 +20,7 @@ type notes struct {
 }
 
 func (n *notes) GetAll(userID types.UserID) ([]types.Note, error) {
-	query := `SELECT (note_id, notes.name, data, notes.folder_id) 
+	query := `SELECT notes.note_id, notes.name, notes.data, notes.folder_id
 FROM notes INNER JOIN folders AS f ON (f.folder_id = notes.folder_id) WHERE user_id=@userID`
 
 	rows, err := n.db.Query(query, sql.Named("userID", userID))
