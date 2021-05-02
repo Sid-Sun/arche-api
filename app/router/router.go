@@ -18,9 +18,9 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 	rtr.Route("/v1/folders", func(r chi.Router) {
 		r.Use(middlewares.JWTAuth(jwtCfg, lgr))
 
-		r.Post("/create", handlers.CreateFolderHandler(svc.Folders, jwtCfg, lgr))
-		r.Get("/get", handlers.GetFoldersHandler(svc.Folders, jwtCfg, lgr))
-		r.Delete("/delete", handlers.DeleteFolder(svc.Folders, jwtCfg, lgr))
+		r.Post("/create", handlers.CreateFolderHandler(svc.Folders, lgr))
+		r.Get("/get", handlers.GetFoldersHandler(svc.Folders, lgr))
+		r.Delete("/delete", handlers.DeleteFolder(svc.Folders, lgr))
 	})
 
 	return rtr

@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"github.com/sid-sun/arche-api/app/service"
 	"github.com/sid-sun/arche-api/app/types"
-	"github.com/sid-sun/arche-api/config"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 )
 
-func CreateFolderHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
+func CreateFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var claims types.AccessTokenClaims
 		claims = req.Context().Value("claims").(types.AccessTokenClaims)
@@ -57,7 +56,7 @@ func CreateFolderHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr 
 	}
 }
 
-func GetFoldersHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
+func GetFoldersHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var claims types.AccessTokenClaims
 		claims = req.Context().Value("claims").(types.AccessTokenClaims)
@@ -84,7 +83,7 @@ func GetFoldersHandler(svc service.FoldersService, cfg *config.JWTConfig, lgr *z
 	}
 }
 
-func DeleteFolder(svc service.FoldersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
+func DeleteFolder(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var claims types.AccessTokenClaims
 		claims = req.Context().Value("claims").(types.AccessTokenClaims)
