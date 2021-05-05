@@ -17,6 +17,7 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 
 	rtr.Post("/v1/signup", handlers.CreateUserHandler(svc.Users, jwtCfg, lgr))
 	rtr.Post("/v1/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))
+	rtr.Post("/v1/session/refresh", handlers.RefreshTokenHandler(jwtCfg, lgr))
 
 	rtr.Route("/v1/folders", func(r chi.Router) {
 		r.Use(middlewares.JWTAuth(jwtCfg, lgr))

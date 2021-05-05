@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/sid-sun/arche-api/app/types"
+	"github.com/sid-sun/arche-api/config"
 	"go.uber.org/zap"
+	"time"
 )
 
 func IssueJWT(claims types.AccessTokenClaims, secret string, lgr *zap.Logger) (string, error) {
@@ -39,4 +41,38 @@ func ValidateJWT(tkn string, secret string, lgr *zap.Logger) (types.AccessTokenC
 	}
 
 	return types.AccessTokenClaims{}, errors.New("token not okay or invalid or incorrect token claim")
+}
+
+func IssueTokens(userID types.UserID, key []byte, cfg *config.JWTConfig, lgr *zap.Logger) (accessToken string, refreshToken string, err error) {
+	refreshClaims := types.AccessTokenClaims{
+		UserID:        userID,
+		EncryptionKey: key,
+		StandardClaims: jwt.StandardClaims{
+			NotBefore: time.Now().Unix(),
+			ExpiresAt: time.Now().Add(time.Hour * 24 * 30).Unix(),
+		},
+	}
+
+	accessClaims := types.AccessTokenClaims{
+		UserID:        userID,
+		EncryptionKey: key,
+		StandardClaims: jwt.StandardClaims{
+			NotBefore: time.Now().Unix(),
+			ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
+		},
+	}
+
+	refreshToken, err = IssueJWT(refreshClaims, cfg.GetSecret(), lgr)
+	if err != nil {
+		// TODO: Add Logging
+		return "", "", err
+	}
+
+	accessToken, err = IssueJWT(accessClaims, cfg.GetSecret(), lgr)
+	if err != nil {
+		// TODO: Add Logging
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/sid-sun/arche-api/app/service"
 	"github.com/sid-sun/arche-api/app/types"
 	"github.com/sid-sun/arche-api/app/utils"
@@ -14,7 +13,6 @@ import (
 	"golang.org/x/crypto/sha3"
 	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
@@ -39,6 +37,8 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 			// TODO: Add Logging
 			return
 		}
+		var decryptedKey []byte
+		copy(decryptedKey, key)
 		err = utils.EncryptKey(key, data.Password, lgr)
 		usr, err := svc.CreateUser(data.Email, key, hash)
 		if err != nil {
@@ -47,15 +47,7 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 			return
 		}
 
-		claims := types.AccessTokenClaims{
-			UserID:        usr.ID,
-			EncryptionKey: key,
-			StandardClaims: jwt.StandardClaims{
-				NotBefore: time.Now().Unix(),
-				ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
-			},
-		}
-		tkn, err := utils.IssueJWT(claims, cfg.GetSecret(), lgr)
+		accessToken, refreshToken, err := utils.IssueTokens(usr.ID, decryptedKey, cfg, lgr)
 		if err != nil {
 			// TODO: Add Logging
 			w.WriteHeader(http.StatusInternalServerError)
@@ -63,7 +55,8 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 		}
 
 		resp := types.UserResponse{
-			AuthenticationToken: tkn,
+			AuthenticationToken: accessToken,
+			RefreshToken:        refreshToken,
 		}
 
 		d, err = json.Marshal(resp)
@@ -126,15 +119,7 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 			return
 		}
 
-		claims := types.AccessTokenClaims{
-			UserID:        usr.ID,
-			EncryptionKey: key,
-			StandardClaims: jwt.StandardClaims{
-				NotBefore: time.Now().Unix(),
-				ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
-			},
-		}
-		tkn, err := utils.IssueJWT(claims, cfg.GetSecret(), lgr)
+		accessToken, refreshToken, err := utils.IssueTokens(usr.ID, key, cfg, lgr)
 		if err != nil {
 			// TODO: Add Logging
 			w.WriteHeader(http.StatusInternalServerError)
@@ -142,7 +127,8 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 		}
 
 		resp := types.UserResponse{
-			AuthenticationToken: tkn,
+			AuthenticationToken: accessToken,
+			RefreshToken:        refreshToken,
 		}
 
 		d, err = json.Marshal(resp)
@@ -159,3 +145,5 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 		}
 	}
 }
+
+
