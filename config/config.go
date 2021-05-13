@@ -40,6 +40,7 @@ func Load() (*Config, error) {
 		},
 		JWT: &JWTConfig{
 			secret: viper.GetString("JWT_SECRET"),
+			ttl:    viper.GetInt("JWT_TTL"),
 		},
 	}, nil
 }
