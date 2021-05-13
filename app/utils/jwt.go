@@ -58,7 +58,7 @@ func IssueTokens(userID types.UserID, key []byte, cfg *config.JWTConfig, lgr *za
 		EncryptionKey: key,
 		StandardClaims: jwt.StandardClaims{
 			NotBefore: time.Now().Unix(),
-			ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
+			ExpiresAt: time.Now().Add(time.Minute * time.Duration(cfg.GetTTL())).Unix(),
 		},
 	}
 
