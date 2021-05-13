@@ -19,18 +19,13 @@ func GenerateEncryptionKey(lgr *zap.Logger) ([]byte, [32]byte, error) {
 	return key, sha3.Sum256(key), nil
 }
 
-func EncryptKey(key []byte, password string, lgr *zap.Logger) error {
+func EncryptKey(key []byte, password string, lgr *zap.Logger) {
 	encryptionKey := sha3.Sum256([]byte(password))
-	blockCipher, err := aes.NewCipher(encryptionKey[:])
-	if err != nil {
-		// TODO: Add Logging
-		return err
-	}
-
+	// Error can be safely ignored as it is only thrown if keysize if invalid
+	// Which won't happen as we use SHA to generate the encryption key
+	blockCipher, _ := aes.NewCipher(encryptionKey[:])
 	blockCipher.Encrypt(key[:aes.BlockSize], key[:aes.BlockSize])
 	blockCipher.Encrypt(key[aes.BlockSize:], key[aes.BlockSize:])
-
-	return nil
 }
 
 func DecryptKey(key []byte, password string, lgr *zap.Logger) error {

@@ -39,11 +39,7 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 		}
 		var decryptedKey []byte
 		copy(decryptedKey, key)
-		err = utils.EncryptKey(key, data.Password, lgr)
-		usr, err := svc.CreateUser(data.Email, key, hash)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
+		utils.EncryptKey(key, data.Password, lgr)
 			return
 		}
 
