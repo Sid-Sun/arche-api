@@ -7,16 +7,25 @@ import (
 	"github.com/sid-sun/arche-api/config"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
 )
 
 func JWTAuth(jwtCfg *config.JWTConfig, lgr *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			token := req.Header.Get("authentication_token")
+			token := req.Header.Get("Authorization")
 			if token == "" {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
+
+			// Otherwise, extract the actual token
+			hasToken := strings.Split(token, "Bearer")
+			if len(hasToken) != 2 || len(hasToken[1]) <= 1 { // Compensating for a space literal
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			token = strings.TrimSpace(hasToken[1])
 
 			var claims types.AccessTokenClaims
 			var err error
