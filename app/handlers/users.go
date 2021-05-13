@@ -52,7 +52,7 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 			EncryptionKey: key,
 			StandardClaims: jwt.StandardClaims{
 				NotBefore: time.Now().Unix(),
-				ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
+				ExpiresAt: time.Now().Add(time.Minute * time.Duration(cfg.GetTTL())).Unix(),
 			},
 		}
 		tkn, err := utils.IssueJWT(claims, cfg.GetSecret(), lgr)
