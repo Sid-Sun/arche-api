@@ -20,8 +20,7 @@ func InitDBClient(cfg *config.DBConfig, lgr *zap.Logger) (*sql.DB, error) {
 		return nil, err
 	}
 
-	ctx := context.Background()
-	err = db.PingContext(ctx)
+	err = db.PingContext(context.Background())
 	if err != nil {
 		lgr.Fatal(fmt.Sprintf("[Initializers] [InitDBClient] [PingContext] %s", err.Error()))
 		return nil, err
