@@ -14,6 +14,7 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 	rtr := chi.NewRouter()
 
 	rtr.Use(middleware.Recoverer)
+	rtr.Use(middlewares.WithContentJSON)
 
 	rtr.Post("/v1/signup", handlers.CreateUserHandler(svc.Users, jwtCfg, lgr))
 	rtr.Post("/v1/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))

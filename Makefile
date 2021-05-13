@@ -10,5 +10,8 @@ fmt:
 vet:
 	go vet $(ALL_PACKAGES)
 
+build: fmt vet
+	go build -o out/main main
+
 serve: fmt vet
-	env $(cat dev.env | xargs) go run main/*.go
+	go run main/*.go
