@@ -2,3 +2,4 @@ out
 config.toml
 .idea
 .vscode
+*.env
