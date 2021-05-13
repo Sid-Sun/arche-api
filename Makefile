@@ -11,7 +11,7 @@ vet:
 	go vet $(ALL_PACKAGES)
 
 build: fmt vet
-	go build -o out/main main
+	go build -o $(APP_EXECUTABLE) main/*.go
 
 serve: fmt vet
 	go run main/*.go
