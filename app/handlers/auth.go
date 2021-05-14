@@ -63,3 +63,17 @@ func RefreshTokenHandler(jwtCfg *config.JWTConfig, lgr *zap.Logger) http.Handler
 		}
 	}
 }
+
+func ValidateTokenHandler() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		// If claims are present on context then tokens are already validated by auth middleware
+		token := request.Context().Value("claims")
+
+		if token == nil {
+			writer.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		writer.WriteHeader(http.StatusOK)
+	}
+}
