@@ -27,6 +27,11 @@ func Load() (*Config, error) {
 		}
 	}
 
+	ttl := viper.GetInt("JWT_TTL")
+	if ttl == 0 {
+		ttl = 15
+	}
+
 	return &Config{
 		env: viper.GetString("APP_ENV"),
 		HTTP: HTTPServerConfig{
@@ -42,7 +47,7 @@ func Load() (*Config, error) {
 		},
 		JWT: &JWTConfig{
 			secret: viper.GetString("JWT_SECRET"),
-			ttl:    viper.GetInt("JWT_TTL"),
+			ttl:    ttl,
 		},
 	}, nil
 }
