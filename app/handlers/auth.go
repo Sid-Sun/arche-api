@@ -1,30 +1,32 @@
 package handlers
 
 import (
-	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
+	"github.com/sid-sun/arche-api/app/http/resperr"
 	"github.com/sid-sun/arche-api/app/types"
 	"github.com/sid-sun/arche-api/app/utils"
 	"github.com/sid-sun/arche-api/config"
 	"go.uber.org/zap"
-	"net/http"
-	"time"
 )
 
 func RefreshTokenHandler(jwtCfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		token := req.Header.Get("refresh_token")
 		if token == "" {
-			w.WriteHeader(http.StatusUnauthorized)
+			lgr.Debug("[Handlers] [RefreshTokenHandler] [Get] token not in request headers")
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "refresh token was not sent"), w, lgr)
 			return
 		}
 
 		var claims types.AccessTokenClaims
 		var err error
 		if claims, err = utils.ValidateJWT(token, jwtCfg.GetSecret(), lgr); err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte(err.Error()))
+			lgr.Debug(fmt.Sprintf("[Handlers] [RefreshTokenHandler] [ValidateJWT] %s", err.Error()))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
 			return
 		}
 
@@ -39,8 +41,8 @@ func RefreshTokenHandler(jwtCfg *config.JWTConfig, lgr *zap.Logger) http.Handler
 
 		tkn, err := utils.IssueJWT(accessTokenClaims, jwtCfg.GetSecret(), lgr)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
+			lgr.Debug(fmt.Sprintf("[Handlers] [RefreshTokenHandler] [IssueJWT] %s", err.Error()))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, err.Error()), w, lgr)
 			return
 		}
 
@@ -48,32 +50,20 @@ func RefreshTokenHandler(jwtCfg *config.JWTConfig, lgr *zap.Logger) http.Handler
 			AuthenticationToken: tkn,
 			RefreshToken:        token,
 		}
-
-		d, err := json.Marshal(resp)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		_, err = w.Write(d)
-		if err != nil {
-			// TODO: Add Logging
-			return
-		}
+		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
 	}
 }
 
-func ValidateTokenHandler() http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
+func ValidateTokenHandler(lgr *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
 		// If claims are present on context then tokens are already validated by auth middleware
-		token := request.Context().Value("claims")
+		token := req.Context().Value("claims")
 
 		if token == nil {
-			writer.WriteHeader(http.StatusUnauthorized)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusUnauthorized, "claims are invalid"), w, lgr)
 			return
 		}
 
-		writer.WriteHeader(http.StatusOK)
+		utils.WriteSuccessResponse(http.StatusOK, "claims are valid", w, lgr)
 	}
 }
