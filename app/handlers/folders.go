@@ -2,37 +2,45 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/sid-sun/arche-api/app/service"
-	"github.com/sid-sun/arche-api/app/types"
-	"go.uber.org/zap"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/sid-sun/arche-api/app/custom_errors"
+	"github.com/sid-sun/arche-api/app/http/resperr"
+	"github.com/sid-sun/arche-api/app/service"
+	"github.com/sid-sun/arche-api/app/types"
+	"github.com/sid-sun/arche-api/app/utils"
+	"go.uber.org/zap"
 )
+
+// TODO: Error Handling from DB (errx)
+// TODO: Severity-Checked Logging for errx
 
 func CreateFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var claims types.AccessTokenClaims
-		claims = req.Context().Value("claims").(types.AccessTokenClaims)
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
 
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [CreateFolderHandler] [ReadAll] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "failed to read request body"), w, lgr)
 			return
 		}
 
 		var data types.CreateFolderRequest
 		err = json.Unmarshal(d, &data)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [CreateFolderHandler] [Unmarshal] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
 			return
 		}
 
-		newFolderID, err := svc.Create(data.Name, claims)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
+		newFolderID, errx := svc.Create(data.Name, claims)
+		if errx != nil {
+			errMsg := fmt.Sprintf("[Handlers] [CreateFolderHandler] [Create] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
 
@@ -40,84 +48,58 @@ func CreateFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.Handl
 			Name:     data.Name,
 			FolderID: newFolderID,
 		}
-
-		d, err = json.Marshal(resp)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		_, err = w.Write(d)
-		if err != nil {
-			// TODO: Add Logging
-			return
-		}
+		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
 	}
 }
 
 func GetFoldersHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var claims types.AccessTokenClaims
-		claims = req.Context().Value("claims").(types.AccessTokenClaims)
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
 
 		folders, errx := svc.GetAll(claims)
 		if errx != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
+			errMsg := fmt.Sprintf("[Handlers] [GetFoldersHandler] [GetAll] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
 
-		data, err := json.Marshal(folders)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		_, err = w.Write(data)
-		if err != nil {
-			// TODO: Add Logging
-			return
-		}
+		utils.WriteSuccessResponse(http.StatusOK, folders, w, lgr)
 	}
 }
 
-func DeleteFolder(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
+func DeleteFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var claims types.AccessTokenClaims
-		claims = req.Context().Value("claims").(types.AccessTokenClaims)
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
 
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			lgr.Debug(fmt.Sprintf("[Handlers] [DeleteFolderHandler] [ReadAll] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "failed to read request body"), w, lgr)
 			return
 		}
 
 		var data types.DeleteFolderRequest
 		err = json.Unmarshal(d, &data)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			lgr.Debug(fmt.Sprintf("[Handlers] [DeleteFolderHandler] [Unmarshal] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
 			return
 		}
 
-		err = svc.Delete(data.FolderID, claims)
-		if err != nil {
-			// TODO: Add Logging
-			// TODO: Check if a folder was deleted, don't allow non-existent folders to be deleted
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+		errx := svc.Delete(data.FolderID, claims)
+		if errx != nil && errx.Kind() != custom_errors.NoRowsAffected {
+			errMsg := fmt.Sprintf("[Handlers] [DeleteFolderHandler] [GetAll] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
 
-		_, err = w.Write(d)
-		if err != nil {
-			// TODO: Add Logging
+		if errx.Kind() == custom_errors.NoRowsAffected {
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "folder does not exist or doesn't belong to user"), w, lgr)
 			return
 		}
+
+		utils.WriteSuccessResponse(http.StatusOK, data.FolderID, w, lgr)
 	}
 }
