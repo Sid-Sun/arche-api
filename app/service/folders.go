@@ -39,7 +39,6 @@ func (f folders) Create(name string, userClaims types.AccessTokenClaims) (types.
 	folderID, errx := f.db.Folders.Create(base64.StdEncoding.EncodeToString(encryptedName), userClaims.UserID)
 	if errx != nil {
 		f.lgr.Debug(fmt.Sprintf("[Service] [Folders] [Create] [Create] %s", errx.String()))
-		// TODO: Add Logging
 		return 0, errx
 	}
 
