@@ -13,12 +13,6 @@ import (
 func JWTAuth(jwtCfg *config.JWTConfig, lgr *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			// Bypass for refresh handler as it works on `refresh_token` not on `Bearer-Token`
-			if strings.Compare(req.URL.Path, "/v1/session/refresh") == 0 {
-				next.ServeHTTP(w, req)
-				return
-			}
-
 			token := req.Header.Get("Authorization")
 			if token == "" {
 				w.WriteHeader(http.StatusUnauthorized)
