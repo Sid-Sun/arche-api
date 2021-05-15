@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/nsnikhil/erx"
 	"github.com/sid-sun/arche-api/app/custom_errors"
 	"github.com/sid-sun/arche-api/app/http/resperr"
 	"github.com/sid-sun/arche-api/app/service"
@@ -53,14 +52,8 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 				utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "user already exists"), w, lgr)
 				return
 			}
-			switch errx.Severity {
-			case erx.SeverityError:
-				lgr.Error(fmt.Sprintf("[Handlers] [Users] [CreateUserHandler] [CreateUser] %s", errx.Error()))
-			case erx.SeverityInfo:
-				lgr.Info(fmt.Sprintf("[Handlers] [Users] [CreateUserHandler] [CreateUser] %s", errx.Error()))
-			default:
-				lgr.Debug(fmt.Sprintf("[Handlers] [Users] [CreateUserHandler] [CreateUser] %s", errx.Error()))
-			}
+			errMsg := fmt.Sprintf("[Handlers] [Users] [CreateUserHandler] [CreateUser] %s", errx.Error())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
@@ -104,14 +97,8 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 				utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "user does not exist"), w, lgr)
 				return
 			}
-			switch errx.Severity {
-			case erx.SeverityError:
-				lgr.Error(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [GetUser] %s", errx.Error()))
-			case erx.SeverityInfo:
-				lgr.Info(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [GetUser] %s", errx.Error()))
-			default:
-				lgr.Debug(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [GetUser] %s", errx.Error()))
-			}
+			errMsg := fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [GetUser] %s", errx.Error())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
