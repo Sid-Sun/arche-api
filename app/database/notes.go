@@ -2,16 +2,19 @@ package database
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
+
+	"github.com/nsnikhil/erx"
+	"github.com/sid-sun/arche-api/app/custom_errors"
 	"github.com/sid-sun/arche-api/app/types"
 	"go.uber.org/zap"
 )
 
 type NotesTable interface {
-	GetAll(userID types.UserID) ([]types.Note, error)
-	Create(name string, data string, folderID types.FolderID, userID types.UserID) (types.NoteID, error)
-	Update(note types.Note, userID types.UserID) error
-	Delete(noteID types.NoteID, userID types.UserID) error
+	GetAll(userID types.UserID) ([]types.Note, *erx.Erx)
+	Create(name string, data string, folderID types.FolderID, userID types.UserID) (types.NoteID, *erx.Erx)
+	Update(note types.Note, userID types.UserID) *erx.Erx
+	Delete(noteID types.NoteID, userID types.UserID) *erx.Erx
 }
 
 type notes struct {
@@ -19,20 +22,26 @@ type notes struct {
 	db  *sql.DB
 }
 
-func (n *notes) GetAll(userID types.UserID) ([]types.Note, error) {
+func (n *notes) GetAll(userID types.UserID) ([]types.Note, *erx.Erx) {
 	query := `SELECT notes.note_id, notes.name, notes.data, notes.folder_id
 FROM notes INNER JOIN folders AS f ON (f.folder_id = notes.folder_id) WHERE user_id=@userID`
 
 	rows, err := n.db.Query(query, sql.Named("userID", userID))
 	if err != nil {
-		// TODO: Add Logging
-		return nil, err
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [GetAll] [Query] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return nil, errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [GetAll] [Query] %s", err.Error()))
+		return nil, errx
 	}
 
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
-			// TODO: Add Logging
+			n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [GetAll] [Close] %s", err.Error()))
 		}
 	}(rows)
 	notesSlice := *new([]types.Note)
@@ -45,8 +54,14 @@ FROM notes INNER JOIN folders AS f ON (f.folder_id = notes.folder_id) WHERE user
 
 		err = rows.Scan(&noteID, &name, &data, &folderID)
 		if err != nil {
-			// TODO: Add Logging
-			return nil, err
+			sqlErr, errx := checkForSQLError(err)
+			if sqlErr != nil {
+				errx = erx.WithArgs(errx, erx.SeverityError)
+				n.lgr.Error(fmt.Sprintf("[Database] [Notes] [GetAll] [Scan] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+				return nil, errx
+			}
+			n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [GetAll] [Scan] %s", err.Error()))
+			return nil, errx
 		}
 
 		notesSlice = append(notesSlice, types.Note{
@@ -59,14 +74,20 @@ FROM notes INNER JOIN folders AS f ON (f.folder_id = notes.folder_id) WHERE user
 	}
 
 	if err := rows.Err(); err != nil {
-		// TODO: Add Logging
-		return nil, err
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [GetAll] [Err] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return nil, errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [GetAll] [Err] %s", err.Error()))
+		return nil, errx
 	}
 
 	return notesSlice, nil
 }
 
-func (n *notes) Create(name string, data string, folderID types.FolderID, userID types.UserID) (types.NoteID, error) {
+func (n *notes) Create(name string, data string, folderID types.FolderID, userID types.UserID) (types.NoteID, *erx.Erx) {
 	query := `INSERT INTO notes (data, name, folder_id) OUTPUT inserted.note_id 
 VALUES (@data, @name, (SELECT folder_id FROM folders WHERE user_id=@userID AND  folder_id=@folderID))`
 
@@ -74,45 +95,69 @@ VALUES (@data, @name, (SELECT folder_id FROM folders WHERE user_id=@userID AND  
 		sql.Named("userID", userID), sql.Named("folderID", folderID))
 	err := row.Err()
 	if err != nil {
-		// TODO: Add Logging
-		return 0, err
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Create] [QueryRow] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return 0, errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Create] [QueryRow] %s", err.Error()))
+		return 0, errx
 	}
 
 	var noteID types.NoteID
 	err = row.Scan(&noteID)
 	if err != nil {
-		// TODO: Add Logging
-		return 0, err
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Create] [Scan] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return 0, errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Create] [Scan] %s", err.Error()))
+		return 0, errx
 	}
 
 	return noteID, nil
 }
 
-func (n *notes) Update(note types.Note, userID types.UserID) error {
+func (n *notes) Update(note types.Note, userID types.UserID) *erx.Erx {
 	query := `UPDATE notes SET name = @name, data = @data 
 WHERE note_id = @noteID AND folder_id = (SELECT folder_id FROM folders WHERE folder_id = (SELECT notes.folder_id FROM notes WHERE note_id = @noteID) AND user_id = @userID)`
 
 	res, err := n.db.Exec(query, sql.Named("name", note.Name), sql.Named("data", note.Data),
 		sql.Named("noteID", note.ID), sql.Named("userID", userID))
-
 	if err != nil {
-		// TODO: Add Logging
-		return err
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Update] [Exec] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Update] [Exec] %s", err.Error()))
+		return errx
 	}
 
-	if count, err := res.RowsAffected(); err != nil || count == 0 {
-		if err != nil {
-			// TODO: Add Logging
-			// TODO: Add Error Handling
-			return err
+	var count int64
+	if count, err = res.RowsAffected(); err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Update] [RowsAffected] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return errx
 		}
-		return errors.New("no records were modified")
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Update] [RowsAffected] %s", err.Error()))
+		return errx
+	}
+
+	if count == 0 {
+		return erx.WithArgs(custom_errors.NoRowsAffected, erx.SeverityInfo)
 	}
 
 	return nil
 }
 
-func (n *notes) Delete(noteID types.NoteID, userID types.UserID) error {
+func (n *notes) Delete(noteID types.NoteID, userID types.UserID) *erx.Erx {
 	query := `DELETE FROM notes WHERE note_id = @noteID AND folder_id = 
                                               (SELECT folder_id FROM folders WHERE folder_id = (
                                                   SELECT notes.folder_id FROM notes WHERE note_id = @noteID) AND user_id = @userID)`
@@ -120,17 +165,30 @@ func (n *notes) Delete(noteID types.NoteID, userID types.UserID) error {
 	res, err := n.db.Exec(query, sql.Named("noteID", noteID), sql.Named("userID", userID))
 
 	if err != nil {
-		// TODO: Add Logging
-		return err
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Delete] [Exec] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Delete] [Exec] %s", err.Error()))
+		return errx
 	}
 
-	if count, err := res.RowsAffected(); err != nil || count == 0 {
-		if err != nil {
-			// TODO: Add Logging
-			// TODO: Add Error Handling
-			return err
+	var count int64
+	if count, err = res.RowsAffected(); err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Delete] [RowsAffected] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return errx
 		}
-		return errors.New("no records were deleted")
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Delete] [RowsAffected] %s", err.Error()))
+		return errx
+	}
+
+	if count == 0 {
+		return erx.WithArgs(custom_errors.NoRowsAffected, erx.SeverityInfo)
 	}
 
 	return nil

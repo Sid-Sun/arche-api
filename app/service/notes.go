@@ -22,9 +22,9 @@ type notes struct {
 }
 
 func (n *notes) GetAll(claims types.AccessTokenClaims) ([]types.Note, error) {
-	notesList, err := n.db.Notes.GetAll(claims.UserID)
-	if err != nil {
-		return nil, err
+	notesList, errx := n.db.Notes.GetAll(claims.UserID)
+	if errx != nil {
+		return nil, errx
 	}
 
 	blockCipher, err := aes.NewCipher(claims.EncryptionKey)
