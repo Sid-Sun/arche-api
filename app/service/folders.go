@@ -43,10 +43,10 @@ func (f folders) Create(name string, userClaims types.AccessTokenClaims) (types.
 }
 
 func (f folders) GetAll(userClaims types.AccessTokenClaims) ([]types.Folder, error) {
-	fldrs, err := f.db.Folders.Get(userClaims.UserID)
-	if err != nil {
+	fldrs, errx := f.db.Folders.Get(userClaims.UserID)
+	if errx != nil {
 		// TODO: Add Logging
-		return []types.Folder{}, err
+		return []types.Folder{}, errx
 	}
 
 	blockCipher, err := aes.NewCipher(userClaims.EncryptionKey)
