@@ -61,8 +61,8 @@ func GetFoldersHandler(svc service.FoldersService, lgr *zap.Logger) http.Handler
 		var claims types.AccessTokenClaims
 		claims = req.Context().Value("claims").(types.AccessTokenClaims)
 
-		folders, err := svc.GetAll(claims)
-		if err != nil {
+		folders, errx := svc.GetAll(claims)
+		if errx != nil {
 			// TODO: Add Logging
 			w.WriteHeader(http.StatusInternalServerError)
 			return
