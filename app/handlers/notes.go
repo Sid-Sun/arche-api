@@ -14,8 +14,8 @@ func GetNotesHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFunc
 		var claims types.AccessTokenClaims
 		claims = req.Context().Value("claims").(types.AccessTokenClaims)
 
-		notes, err := svc.GetAll(claims)
-		if err != nil {
+		notes, errx := svc.GetAll(claims)
+		if errx != nil {
 			// TODO: Add Logging
 			return
 		}
