@@ -78,7 +78,7 @@ func (n *notes) Create(name string, data string, folderID types.FolderID, claims
 	if err != nil {
 		// TODO: Add Logging
 		return 0, err
-	}
+	} 
 
 	return noteID, nil
 }
