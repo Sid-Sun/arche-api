@@ -2,139 +2,128 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/sid-sun/arche-api/app/service"
-	"github.com/sid-sun/arche-api/app/types"
-	"go.uber.org/zap"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/sid-sun/arche-api/app/http/resperr"
+	"github.com/sid-sun/arche-api/app/service"
+	"github.com/sid-sun/arche-api/app/types"
+	"github.com/sid-sun/arche-api/app/utils"
+	"go.uber.org/zap"
 )
 
 func GetNotesHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var claims types.AccessTokenClaims
-		claims = req.Context().Value("claims").(types.AccessTokenClaims)
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
 
 		notes, errx := svc.GetAll(claims)
 		if errx != nil {
-			// TODO: Add Logging
+			errMsg := fmt.Sprintf("[Handlers] [GetNotesHandler] [GetAll] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
 
-		data, err := json.Marshal(notes)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		_, err = w.Write(data)
-		if err != nil {
-			// TODO: Add Logging
-			return
-		}
+		utils.WriteSuccessResponse(http.StatusOK, notes, w, lgr)
 	}
 }
 
 func CreateNoteHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var claims types.AccessTokenClaims
-		claims = req.Context().Value("claims").(types.AccessTokenClaims)
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
 
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [CreateNoteHandler] [ReadAll] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "failed to read request body"), w, lgr)
 			return
 		}
 
 		var body types.CreateNoteRequest
 		err = json.Unmarshal(d, &body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [CreateNoteHandler] [Unmarshal] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
 			return
 		}
 
-		noteID, err := svc.Create(body.Name, body.Data, body.FolderID, claims)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+		noteID, errx := svc.Create(body.Name, body.Data, body.FolderID, claims)
+		if errx != nil {
+			// TODO: Implement Non-Existent Data operation or Unauthorized data operation errors
+			errMsg := fmt.Sprintf("[Handlers] [GetNotesHandler] [Create] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
 
 		res := types.CreateNoteResponse{
 			NoteID: noteID,
 		}
-
-		d, err = json.Marshal(res)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		_, err = w.Write(d)
-		if err != nil {
-			// TODO: Add Logging
-			return
-		}
+		utils.WriteSuccessResponse(http.StatusOK, res, w, lgr)
 	}
 }
 
 func UpdateNoteHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var claims types.AccessTokenClaims
-		claims = req.Context().Value("claims").(types.AccessTokenClaims)
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
 
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [UpdateNoteHandler] [ReadAll] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "failed to read request body"), w, lgr)
 			return
 		}
 
 		var body types.UpdateNoteRequest
 		err = json.Unmarshal(d, &body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [UpdateNoteHandler] [Unmarshal] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
 			return
 		}
 
-		err = svc.Update(body.Name, body.Data, body.FolderID, body.NoteID, claims)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+		errx := svc.Update(body.Name, body.Data, body.FolderID, body.NoteID, claims)
+		if errx != nil {
+			// TODO: Implement Non-Existent Data operation or Unauthorized data operation errors
+			errMsg := fmt.Sprintf("[Handlers] [UpdateNoteHandler] [Update] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
+
+		utils.WriteSuccessResponse(http.StatusOK, body.NoteID, w, lgr)
 	}
 }
 
 func DeleteNoteHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var claims types.AccessTokenClaims
-		claims = req.Context().Value("claims").(types.AccessTokenClaims)
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
 
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [DeleteNoteHandler] [ReadAll] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "failed to read request body"), w, lgr)
 			return
 		}
 
 		var body types.DeleteNoteRequest
 		err = json.Unmarshal(d, &body)
 		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+			lgr.Debug(fmt.Sprintf("[Handlers] [DeleteNoteHandler] [Unmarshal] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
 			return
 		}
 
-		err = svc.Delete(body.NoteID, claims)
-		if err != nil {
-			// TODO: Add Logging
-			w.WriteHeader(http.StatusBadRequest)
+		errx := svc.Delete(body.NoteID, claims)
+		if errx != nil {
+			// TODO: Implement Non-Existent Data operation or Unauthorized data operation errors
+			errMsg := fmt.Sprintf("[Handlers] [DeleteNoteHandler] [Delete] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return
 		}
+
+		utils.WriteSuccessResponse(http.StatusOK, body.NoteID, w, lgr)
 	}
 }
