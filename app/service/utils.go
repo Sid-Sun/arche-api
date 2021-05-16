@@ -25,5 +25,24 @@ func decryptNote(note types.Note, blockCipher cipher.Block, lgr *zap.Logger) (ty
 		return types.Note{}, erx.WithArgs(err, erx.SeverityDebug)
 	}
 	note.Data = string(utils.CFBDecrypt(data, blockCipher))
+	
+	return note, nil
+}
+
+func encryptNote(note types.Note, blockCipher cipher.Block, lgr *zap.Logger) (types.Note, *erx.Erx) {
+	encryptedName, err := utils.CFBEncrypt([]byte(note.Name), blockCipher)
+	if err != nil {
+		lgr.Debug(fmt.Sprintf("[Service] [Utils] [encryptNote] [DecodeString] [Data] %s", err.Error()))
+		return types.Note{}, erx.WithArgs(err, erx.SeverityDebug)
+	}
+	note.Name = base64.StdEncoding.EncodeToString(encryptedName)
+	
+	encryptedData, err := utils.CFBEncrypt([]byte(note.Data), blockCipher)
+	if err != nil {
+		lgr.Debug(fmt.Sprintf("[Service] [Utils] [encryptNote] [DecodeString] [Data] %s", err.Error()))
+		return types.Note{}, erx.WithArgs(err, erx.SeverityDebug)
+	}
+	note.Data = base64.StdEncoding.EncodeToString(encryptedData)
+	
 	return note, nil
 }

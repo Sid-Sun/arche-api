@@ -2,13 +2,11 @@ package service
 
 import (
 	"crypto/aes"
-	"encoding/base64"
 	"fmt"
 
 	"github.com/nsnikhil/erx"
 	"github.com/sid-sun/arche-api/app/database"
 	"github.com/sid-sun/arche-api/app/types"
-	"github.com/sid-sun/arche-api/app/utils"
 	"go.uber.org/zap"
 )
 
@@ -79,20 +77,21 @@ func (n *notes) Create(name string, data string, folderID types.FolderID, claims
 		return 0, erx.WithArgs(err, erx.SeverityDebug)
 	}
 
-	encryptedName, err := utils.CFBEncrypt([]byte(name), blockCipher)
-	if err != nil {
-		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Create] [CFBEncrypt] [Name] %s", err.Error()))
-		return 0, erx.WithArgs(err, erx.SeverityDebug)
+	// Create note with zero ID as encryptNote needs note
+	// It does not operate on ID
+	note := types.Note{
+		FolderID: folderID,
+		ID:       0,
+		Name:     name,
+		Data:     data,
+	}
+	note, errx := encryptNote(note, blockCipher, n.lgr)
+	if errx != nil {
+		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Create] [encryptNote] %s", errx.String()))
+		return 0, errx
 	}
 
-	encryptedData, err := utils.CFBEncrypt([]byte(data), blockCipher)
-	if err != nil {
-		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Create] [CFBEncrypt] [Data] %s", err.Error()))
-		return 0, erx.WithArgs(err, erx.SeverityDebug)
-	}
-
-	noteID, errx := n.db.Notes.Create(base64.StdEncoding.EncodeToString(encryptedName),
-		base64.StdEncoding.EncodeToString(encryptedData), folderID, claims.UserID)
+	noteID, errx := n.db.Notes.Create(note.Name, note.Data, folderID, claims.UserID)
 	if errx != nil {
 		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Create] [Create] %s", errx.String()))
 		return 0, errx
@@ -108,24 +107,21 @@ func (n *notes) Update(name string, data string, folderID types.FolderID, noteID
 		return erx.WithArgs(err, erx.SeverityDebug)
 	}
 
-	encryptedName, err := utils.CFBEncrypt([]byte(name), blockCipher)
-	if err != nil {
-		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Update] [CFBEncrypt] [Name] %s", err.Error()))
-		return erx.WithArgs(err, erx.SeverityDebug)
-	}
-
-	encryptedData, err := utils.CFBEncrypt([]byte(data), blockCipher)
-	if err != nil {
-		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Update] [CFBEncrypt] [Data] %s", err.Error()))
-		return erx.WithArgs(err, erx.SeverityDebug)
-	}
-
-	errx := n.db.Notes.Update(types.Note{
-		ID:       noteID,
+	// Create note with zero ID as encryptNote needs note
+	// It does not operate on ID
+	note := types.Note{
 		FolderID: folderID,
-		Data:     base64.StdEncoding.EncodeToString(encryptedData),
-		Name:     base64.StdEncoding.EncodeToString(encryptedName),
-	}, claims.UserID)
+		ID:       noteID,
+		Name:     name,
+		Data:     data,
+	}
+	note, errx := encryptNote(note, blockCipher, n.lgr)
+	if errx != nil {
+		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Update] [encryptNote] %s", errx.String()))
+		return errx
+	}
+
+	errx = n.db.Notes.Update(note, claims.UserID)
 	if errx != nil {
 		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Update] [Uodate] %s", errx.String()))
 		return errx
