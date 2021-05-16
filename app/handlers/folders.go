@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/sid-sun/arche-api/app/custom_errors"
 	"github.com/sid-sun/arche-api/app/http/resperr"
@@ -52,6 +53,35 @@ func CreateFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.Handl
 	}
 }
 
+func GetFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
+		paramsMap := req.Context().Value("url_params").(map[string]string)
+
+		if paramsMap["folderID"] == "" {
+			lgr.Info("[Handlers] [GetFolderHandler] folderID URL parameter empty")
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "folderID parameter not specified"), w, lgr)
+			return
+		}
+
+		id, err := strconv.Atoi(paramsMap["folderID"])
+		if err != nil {
+			lgr.Info("[Handlers] [GetFolderHandler] [Atoi] specified folderID is not a number")
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "specified folderID is of incorrect type"), w, lgr)
+			return
+		}
+
+		folderContents, errx := svc.Get(types.FolderID(id), claims)
+		if errx != nil {
+			errMsg := fmt.Sprintf("[Handlers] [GetFolderHandler] [Get] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
+			return
+		}
+
+		utils.WriteSuccessResponse(http.StatusOK, folderContents, w, lgr)
+	}
+}
 func GetFoldersHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		claims := req.Context().Value("claims").(types.AccessTokenClaims)

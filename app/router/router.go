@@ -29,6 +29,8 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 
 		r.Post("/create", handlers.CreateFolderHandler(svc.Folders, lgr))
 		r.Get("/get", handlers.GetFoldersHandler(svc.Folders, lgr))
+		r.With(middlewares.ContextURLParams(lgr, "folderID")).Get("/get/{folderID}", 
+			handlers.GetFolderHandler(svc.Folders, lgr))
 		r.Delete("/delete", handlers.DeleteFolderHandler(svc.Folders, lgr))
 	})
 
