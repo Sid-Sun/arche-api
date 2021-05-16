@@ -13,6 +13,7 @@ import (
 )
 
 type NotesService interface {
+	Get(noteID types.NoteID, claims types.AccessTokenClaims) (types.Note, *erx.Erx)
 	GetAll(claims types.AccessTokenClaims) ([]types.Note, *erx.Erx)
 	Create(name string, data string, folderID types.FolderID, claims types.AccessTokenClaims) (types.NoteID, *erx.Erx)
 	Update(name string, data string, folderID types.FolderID, noteID types.NoteID, claims types.AccessTokenClaims) *erx.Erx
@@ -22,6 +23,28 @@ type NotesService interface {
 type notes struct {
 	db  *database.DB
 	lgr *zap.Logger
+}
+
+func (n *notes) Get(noteID types.NoteID, claims types.AccessTokenClaims) (types.Note, *erx.Erx) {
+	note, errx := n.db.Notes.Get(noteID, claims.UserID)
+	if errx != nil {
+		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Get] [Get] %s", errx.String()))
+		return types.Note{}, errx
+	}
+
+	blockCipher, err := aes.NewCipher(claims.EncryptionKey)
+	if err != nil {
+		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Get] [NewCipher] %s", err.Error()))
+		return types.Note{}, erx.WithArgs(err, erx.SeverityDebug)
+	}
+
+	note, errx = decryptNote(note, blockCipher, n.lgr)
+	if errx != nil {
+		n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [Get] [decryptNote] %s", errx.String()))
+		return types.Note{}, errx
+	}
+
+	return note, nil
 }
 
 func (n *notes) GetAll(claims types.AccessTokenClaims) ([]types.Note, *erx.Erx) {
@@ -38,20 +61,11 @@ func (n *notes) GetAll(claims types.AccessTokenClaims) ([]types.Note, *erx.Erx) 
 	}
 
 	for ind, note := range notesList {
-		name, err := base64.StdEncoding.DecodeString(note.Name)
-		if err != nil {
-			n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [GetAll] [DecodeString] [Name] %s", err.Error()))
-			return nil, erx.WithArgs(err, erx.SeverityDebug)
+		note, errx := decryptNote(note, blockCipher, n.lgr)
+		if errx != nil {
+			n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [GetAll] [decryptNote] %s", errx.String()))
+			return nil, errx
 		}
-		note.Name = string(utils.CFBDecrypt(name, blockCipher))
-
-		data, err := base64.StdEncoding.DecodeString(note.Data)
-		if err != nil {
-			n.lgr.Debug(fmt.Sprintf("[Service] [Notes] [GetAll] [DecodeString] [Data] %s", err.Error()))
-			return nil, erx.WithArgs(err, erx.SeverityDebug)
-		}
-		note.Data = string(utils.CFBDecrypt(data, blockCipher))
-
 		notesList[ind] = note
 	}
 
