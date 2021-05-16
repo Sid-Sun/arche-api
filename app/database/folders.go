@@ -11,7 +11,7 @@ import (
 )
 
 type FoldersTable interface {
-	Get(userID types.UserID) ([]types.Folder, *erx.Erx)
+	GetAll(userID types.UserID) ([]types.Folder, *erx.Erx)
 	Delete(folderID types.FolderID, UserID types.UserID) *erx.Erx
 	Create(name string, userID types.UserID) (types.FolderID, *erx.Erx)
 }
@@ -21,7 +21,7 @@ type folders struct {
 	db  *sql.DB
 }
 
-func (f *folders) Get(userID types.UserID) ([]types.Folder, *erx.Erx) {
+func (f *folders) GetAll(userID types.UserID) ([]types.Folder, *erx.Erx) {
 	query := `SELECT folder_id, name FROM folders WHERE user_id=@user_id`
 
 	rows, err := f.db.Query(query, sql.Named("user_id", userID))

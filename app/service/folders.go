@@ -46,7 +46,7 @@ func (f folders) Create(name string, userClaims types.AccessTokenClaims) (types.
 }
 
 func (f folders) GetAll(userClaims types.AccessTokenClaims) ([]types.Folder, *erx.Erx) {
-	fldrs, errx := f.db.Folders.Get(userClaims.UserID)
+	fldrs, errx := f.db.Folders.GetAll(userClaims.UserID)
 	if errx != nil {
 		f.lgr.Debug(fmt.Sprintf("[Service] [Folders] [GetAll] [Get] %s", errx.String()))
 		return []types.Folder{}, errx
