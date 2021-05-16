@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/sid-sun/arche-api/app/http/resperr"
 	"github.com/sid-sun/arche-api/app/service"
@@ -20,6 +21,36 @@ func GetNotesHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFunc
 		notes, errx := svc.GetAll(claims)
 		if errx != nil {
 			errMsg := fmt.Sprintf("[Handlers] [GetNotesHandler] [GetAll] %v", errx.String())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
+			return
+		}
+
+		utils.WriteSuccessResponse(http.StatusOK, notes, w, lgr)
+	}
+}
+
+func GetNoteHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		claims := req.Context().Value("claims").(types.AccessTokenClaims)
+		paramsMap := req.Context().Value("url_params").(map[string]string)
+
+		if paramsMap["noteID"] == "" {
+			lgr.Info("[Handlers] [GetNoteHandler] noteID URL parameter empty")
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "noteID parameter not specified"), w, lgr)
+			return
+		}
+
+		id, err := strconv.Atoi(paramsMap["noteID"])
+		if err != nil {
+			lgr.Info("[Handlers] [GetNoteHandler] [Atoi] specified noteID is not a number")
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "specified noteID is of incorrect type"), w, lgr)
+			return
+		}
+
+		notes, errx := svc.Get(types.NoteID(id), claims)
+		if errx != nil {
+			errMsg := fmt.Sprintf("[Handlers] [GetNoteHandler] [Get] %v", errx.String())
 			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
 			return

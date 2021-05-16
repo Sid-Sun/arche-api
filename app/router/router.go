@@ -40,6 +40,8 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 		r.Post("/create", handlers.CreateNoteHandler(svc.Notes, lgr))
 		r.Put("/update", handlers.UpdateNoteHandler(svc.Notes, lgr))
 		r.Get("/getall", handlers.GetNotesHandler(svc.Notes, lgr))
+		r.With(middlewares.ContextURLParams(lgr, "noteID")).Get("/get/{noteID}", 
+			handlers.GetNoteHandler(svc.Notes, lgr))
 		r.Delete("/delete", handlers.DeleteNoteHandler(svc.Notes, lgr))
 	})
 
