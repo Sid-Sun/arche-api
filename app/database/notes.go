@@ -11,6 +11,7 @@ import (
 )
 
 type NotesTable interface {
+	Get(noteID types.NoteID, userID types.UserID) (types.Note, *erx.Erx)
 	GetAll(userID types.UserID) ([]types.Note, *erx.Erx)
 	Create(name string, data string, folderID types.FolderID, userID types.UserID) (types.NoteID, *erx.Erx)
 	Update(note types.Note, userID types.UserID) *erx.Erx
@@ -20,6 +21,44 @@ type NotesTable interface {
 type notes struct {
 	lgr *zap.Logger
 	db  *sql.DB
+}
+
+func (n *notes) Get(noteID types.NoteID, userID types.UserID) (types.Note, *erx.Erx) {
+	query := `SELECT notes.name, notes.data, f.folder_id FROM notes INNER JOIN folders AS f ON (f.folder_id = notes.folder_id) WHERE user_id=@user_id AND note_id=@note_id`
+
+	row := n.db.QueryRow(query, sql.Named("user_id", userID), sql.Named("note_id", noteID))
+	err := row.Err()
+	if err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Get] [QueryRow] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return types.Note{}, errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Get] [QueryRow] %s", err.Error()))
+		return types.Note{}, errx
+	}
+
+	var folderID types.FolderID
+	var name, data string
+	err = row.Scan(&name, &data, &folderID)
+	if err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			n.lgr.Error(fmt.Sprintf("[Database] [Notes] [Get] [Scan] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return types.Note{}, errx
+		}
+		n.lgr.Debug(fmt.Sprintf("[Database] [Notes] [Get] [Scan] %s", err.Error()))
+		return types.Note{}, errx
+	}
+
+	return types.Note{
+		ID: noteID,
+		Name: name,
+		Data: data,
+		FolderID: folderID,
+	}, nil
 }
 
 func (n *notes) GetAll(userID types.UserID) ([]types.Note, *erx.Erx) {
