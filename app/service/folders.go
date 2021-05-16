@@ -14,6 +14,7 @@ import (
 
 type FoldersService interface {
 	Create(name string, userClaims types.AccessTokenClaims) (types.FolderID, *erx.Erx)
+	Get(folderID types.FolderID, userClaims types.AccessTokenClaims) ([]types.FolderContent, *erx.Erx)
 	GetAll(userClaims types.AccessTokenClaims) ([]types.Folder, *erx.Erx)
 	Delete(folderID types.FolderID, userClaims types.AccessTokenClaims) *erx.Erx
 }
@@ -43,6 +44,34 @@ func (f folders) Create(name string, userClaims types.AccessTokenClaims) (types.
 	}
 
 	return folderID, nil
+}
+
+
+func (f folders) Get(folderID types.FolderID, userClaims types.AccessTokenClaims) ([]types.FolderContent, *erx.Erx) {
+	contents, errx := f.db.Folders.Get(folderID, userClaims.UserID)
+	if errx != nil {
+		f.lgr.Debug(fmt.Sprintf("[Service] [Folders] [Get] [Get] %s", errx.String()))
+		return nil, errx
+	}
+
+	blockCipher, err := aes.NewCipher(userClaims.EncryptionKey)
+	if err != nil {
+		f.lgr.Debug(fmt.Sprintf("[Service] [Folders] [Get] [NewCipher] %s", err.Error()))
+		return nil, erx.WithArgs(err, erx.SeverityDebug)
+	}
+
+	for index, content := range contents {
+		name, err := base64.StdEncoding.DecodeString(content.Name)
+		if err != nil {
+			f.lgr.Debug(fmt.Sprintf("[Service] [Folders] [Get] [DecodeString] %s", err.Error()))
+			return nil, erx.WithArgs(err, erx.SeverityDebug)
+		}
+
+		content.Name = string(utils.CFBDecrypt(name, blockCipher))
+		contents[index] = content
+	}
+
+	return contents, nil
 }
 
 func (f folders) GetAll(userClaims types.AccessTokenClaims) ([]types.Folder, *erx.Erx) {
