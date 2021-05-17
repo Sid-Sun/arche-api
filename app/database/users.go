@@ -36,9 +36,9 @@ func (u *users) Get(emailID string) (types.User, *erx.Erx) {
 			u.lgr.Error(fmt.Sprintf("[Database] [Users] [Get] [Scan] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
 			return types.User{}, errx
 		}
-		if errors.Is(errx, custom_errors.ErrSQLNoResultsInSet) {
+		if errors.Is(err, sql.ErrNoRows) {
 			errx = erx.WithArgs(errx, erx.SeverityInfo, custom_errors.NoRowsInResultSet)
-			u.lgr.Info(fmt.Sprintf("[Database] [Users] [Get] [Scan] [ErrSQLNoResultsInSet] %d : %s", sqlErr.Number, sqlErr.Error()))
+			u.lgr.Info(fmt.Sprintf("[Database] [Users] [Get] [Scan] [ErrSQLNoResultsInSet] %s", errx.String()))
 			return types.User{}, errx
 		}
 		u.lgr.Debug(fmt.Sprintf("[Database] [Users] [Get] [Scan] %s", errx.Error()))
