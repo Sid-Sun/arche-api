@@ -42,7 +42,7 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 			return
 		}
 
-		var decryptedKey []byte
+		decryptedKey := make([]int, len(key))
 		copy(decryptedKey, key)
 		utils.EncryptKey(key, data.Password, lgr)
 
