@@ -41,7 +41,12 @@ func CreateFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.Handl
 		if errx != nil {
 			errMsg := fmt.Sprintf("[Handlers] [CreateFolderHandler] [Create] %v", errx.String())
 			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
-			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.String()), w, lgr)
+			switch errx.Kind() {
+			case custom_errors.DuplicateRecordInsertion:
+				utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, errx.Error()), w, lgr)
+			default:
+				utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.Error()), w, lgr)
+			}
 			return
 		}
 
@@ -82,6 +87,7 @@ func GetFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerF
 		utils.WriteSuccessResponse(http.StatusOK, folderContents, w, lgr)
 	}
 }
+
 func GetFoldersHandler(svc service.FoldersService, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		claims := req.Context().Value("claims").(types.AccessTokenClaims)
