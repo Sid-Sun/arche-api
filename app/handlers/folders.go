@@ -136,6 +136,8 @@ func DeleteFolderHandler(svc service.FoldersService, lgr *zap.Logger) http.Handl
 			return
 		}
 
-		utils.WriteSuccessResponse(http.StatusOK, data.FolderID, w, lgr)
+		utils.WriteSuccessResponse(http.StatusOK, types.DeleteFolderRequest{
+			FolderID: data.FolderID,
+		}, w, lgr)
 	}
 }
