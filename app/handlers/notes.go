@@ -123,7 +123,7 @@ func UpdateNoteHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFu
 			return
 		}
 
-		utils.WriteSuccessResponse(http.StatusOK, body.NoteID, w, lgr)
+		utils.WriteSuccessResponse(http.StatusOK, types.UpdateNoteResponse(body), w, lgr)
 	}
 }
 
@@ -155,6 +155,6 @@ func DeleteNoteHandler(svc service.NotesService, lgr *zap.Logger) http.HandlerFu
 			return
 		}
 
-		utils.WriteSuccessResponse(http.StatusOK, body.NoteID, w, lgr)
+		utils.WriteSuccessResponse(http.StatusOK, types.DeleteNoteResponse(body), w, lgr)
 	}
 }
