@@ -121,9 +121,9 @@ func (f *folders) GetAll(userID types.UserID) ([]types.Folder, *erx.Erx) {
 		}
 
 		folders = append(folders, types.Folder{
-			ID:     folderID,
-			UserID: userID,
-			Name:   name,
+			FolderID: folderID,
+			UserID:   userID,
+			Name:     name,
 		})
 	}
 

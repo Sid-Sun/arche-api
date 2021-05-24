@@ -77,11 +77,11 @@ func (n *notes) Create(name string, data string, folderID types.FolderID, claims
 		return 0, erx.WithArgs(err, erx.SeverityDebug)
 	}
 
-	// Create note with zero ID as encryptNote needs note
-	// It does not operate on ID
+	// Create note with zero NoteID as encryptNote needs note
+	// It does not operate on NoteID
 	note := types.Note{
 		FolderID: folderID,
-		ID:       0,
+		NoteID:   0,
 		Name:     name,
 		Data:     data,
 	}
@@ -107,11 +107,11 @@ func (n *notes) Update(name string, data string, folderID types.FolderID, noteID
 		return erx.WithArgs(err, erx.SeverityDebug)
 	}
 
-	// Create note with zero ID as encryptNote needs note
-	// It does not operate on ID
+	// Create note with zero NoteID as encryptNote needs note
+	// It does not operate on NoteID
 	note := types.Note{
 		FolderID: folderID,
-		ID:       noteID,
+		NoteID:   noteID,
 		Name:     name,
 		Data:     data,
 	}

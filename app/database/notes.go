@@ -54,9 +54,9 @@ func (n *notes) Get(noteID types.NoteID, userID types.UserID) (types.Note, *erx.
 	}
 
 	return types.Note{
-		ID: noteID,
-		Name: name,
-		Data: data,
+		NoteID:   noteID,
+		Name:     name,
+		Data:     data,
 		FolderID: folderID,
 	}, nil
 }
@@ -104,7 +104,7 @@ FROM notes INNER JOIN folders AS f ON (f.folder_id = notes.folder_id) WHERE user
 		}
 
 		notesSlice = append(notesSlice, types.Note{
-			ID:       noteID,
+			NoteID:   noteID,
 			FolderID: folderID,
 			Data:     data,
 			Name:     name,
@@ -165,7 +165,7 @@ func (n *notes) Update(note types.Note, userID types.UserID) *erx.Erx {
 WHERE note_id = @noteID AND folder_id = (SELECT folder_id FROM folders WHERE folder_id = (SELECT notes.folder_id FROM notes WHERE note_id = @noteID) AND user_id = @userID)`
 
 	res, err := n.db.Exec(query, sql.Named("name", note.Name), sql.Named("data", note.Data),
-		sql.Named("noteID", note.ID), sql.Named("userID", userID))
+		sql.Named("noteID", note.NoteID), sql.Named("userID", userID))
 	if err != nil {
 		sqlErr, errx := checkForSQLError(err)
 		if sqlErr != nil {
