@@ -3,9 +3,11 @@ package service
 import (
 	"crypto/aes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 
 	"github.com/nsnikhil/erx"
+	"github.com/sid-sun/arche-api/app/custom_errors"
 	"github.com/sid-sun/arche-api/app/database"
 	"github.com/sid-sun/arche-api/app/types"
 	"github.com/sid-sun/arche-api/app/utils"
@@ -25,6 +27,16 @@ type folders struct {
 }
 
 func (f folders) Create(name string, userClaims types.AccessTokenClaims) (types.FolderID, *erx.Erx) {
+	fldrs, errx := f.GetAll(userClaims)
+	if errx != nil {
+		return 0, errx
+	}
+	for _, flder := range fldrs {
+		if name == flder.Name {
+			return 0, erx.WithArgs(errors.New("folder already exists"), custom_errors.DuplicateRecordInsertion, erx.SeverityInfo)
+		}
+	}
+
 	blockCipher, err := aes.NewCipher(userClaims.EncryptionKey)
 	if err != nil {
 		f.lgr.Debug(fmt.Sprintf("[Service] [Folders] [Create] [NewCipher] %s", err.Error()))
@@ -45,7 +57,6 @@ func (f folders) Create(name string, userClaims types.AccessTokenClaims) (types.
 
 	return folderID, nil
 }
-
 
 func (f folders) Get(folderID types.FolderID, userClaims types.AccessTokenClaims) ([]types.FolderContent, *erx.Erx) {
 	contents, errx := f.db.Folders.Get(folderID, userClaims.UserID)
