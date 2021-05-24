@@ -15,6 +15,7 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 
 	rtr.Use(middleware.Recoverer)
 	rtr.Use(middlewares.WithContentJSON)
+	rtr.Use(middlewares.WithCors())
 
 	rtr.Post("/v1/signup", handlers.CreateUserHandler(svc.Users, jwtCfg, lgr))
 	rtr.Post("/v1/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))
@@ -29,7 +30,7 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 
 		r.Post("/create", handlers.CreateFolderHandler(svc.Folders, lgr))
 		r.Get("/get", handlers.GetFoldersHandler(svc.Folders, lgr))
-		r.With(middlewares.ContextURLParams(lgr, "folderID")).Get("/get/{folderID}", 
+		r.With(middlewares.ContextURLParams(lgr, "folderID")).Get("/get/{folderID}",
 			handlers.GetFolderHandler(svc.Folders, lgr))
 		r.Delete("/delete", handlers.DeleteFolderHandler(svc.Folders, lgr))
 	})
@@ -40,7 +41,7 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) 
 		r.Post("/create", handlers.CreateNoteHandler(svc.Notes, lgr))
 		r.Put("/update", handlers.UpdateNoteHandler(svc.Notes, lgr))
 		r.Get("/getall", handlers.GetNotesHandler(svc.Notes, lgr))
-		r.With(middlewares.ContextURLParams(lgr, "noteID")).Get("/get/{noteID}", 
+		r.With(middlewares.ContextURLParams(lgr, "noteID")).Get("/get/{noteID}",
 			handlers.GetNoteHandler(svc.Notes, lgr))
 		r.Delete("/delete", handlers.DeleteNoteHandler(svc.Notes, lgr))
 	})
