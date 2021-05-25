@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/sid-sun/arche-api/app/custom_errors"
 	"github.com/sid-sun/arche-api/app/http/resperr"
@@ -32,6 +33,13 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 		if err != nil {
 			lgr.Debug(fmt.Sprintf("[Handlers] [CreateUserHandler] [Unmarshal] %v", err))
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "an error occoured when unmarshaling JSON"), w, lgr)
+			return
+		}
+		data.Email = strings.ToLower(data.Email)
+
+		if errx := validateEmail(data.Email); errx != nil {
+			lgr.Info(fmt.Sprintf("[Handlers] [Users] [validateEmail] [InvalidEmail] %v", errx.String()))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "email address is not valid"), w, lgr)
 			return
 		}
 
@@ -88,6 +96,13 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 		if err != nil {
 			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [Unmarshal] %v", err))
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "an error occoured when unmarshaling JSON"), w, lgr)
+			return
+		}
+		data.Email = strings.ToLower(data.Email)
+
+		if errx := validateEmail(data.Email); errx != nil {
+			lgr.Info(fmt.Sprintf("[Handlers] [Users] [validateEmail] [InvalidEmail] %v", errx.String()))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "email address is not valid"), w, lgr)
 			return
 		}
 

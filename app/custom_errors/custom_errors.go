@@ -7,3 +7,4 @@ import (
 const DuplicateRecordInsertion = erx.Kind("DuplicateRecordInsertion")
 const NoRowsInResultSet = erx.Kind("NoRowsInResultSet")
 const NoRowsAffected = erx.Kind("NoRowsAffected")
+const InvalidEmailAddress = erx.Kind("InvalidEmailAddress")
