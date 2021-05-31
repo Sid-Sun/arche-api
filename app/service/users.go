@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/nsnikhil/erx"
 	"github.com/sid-sun/arche-api/app/database"
@@ -72,7 +74,10 @@ func (u *users) SendVerificationEmail(emailID string, verificationString string,
 	callbackURL = fmt.Sprintf("%s?verificationToken=%s", callbackURL, verificationString)
 
 	msg := u.mailClient.NewMessage(veCfg.GetSenderEmail(u.mailClient.Domain()), veCfg.GetSubject(), veCfg.GetBody(callbackURL), emailID)
-	_, _, err := u.mailClient.Send(msg)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	_, _, err := u.mailClient.Send(ctx, msg)
 	if err != nil {
 		return erx.WithArgs(err, erx.SeverityDebug)
 	}
