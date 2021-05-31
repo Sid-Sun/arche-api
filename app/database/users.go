@@ -13,7 +13,10 @@ import (
 
 type UsersTable interface {
 	Get(emailID string) (types.User, *erx.Erx)
-	Create(emailID string, encryptionKey string, keyHash string) (types.UserID, *erx.Erx)
+	GetVerificationStatus(emailID string) (bool, string, *erx.Erx)
+	UpdateVerificationToken(emailID string, vetkn string) *erx.Erx
+	Create(emailID string, encryptionKey string, keyHash string, vetkn string) (types.UserID, *erx.Erx)
+	VerifyUser(vetkn string) *erx.Erx
 }
 
 type users struct {
@@ -21,14 +24,104 @@ type users struct {
 	db  *sql.DB
 }
 
-func (u *users) Get(emailID string) (types.User, *erx.Erx) {
-	query := `SELECT user_id, encryption_key, key_hash FROM users WHERE email=@email;`
+func (u *users) VerifyUser(vetkn string) *erx.Erx {
+	query := `UPDATE users SET verified = 1 WHERE verification_key=@veKey;`
 
-	var userID types.UserID
-	var encryptionKey, keyHash string
+	res, err := u.db.Exec(query, sql.Named("veKey", vetkn))
+	if err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			u.lgr.Error(fmt.Sprintf("[Database] [Users] [VerifyUser] [Scan] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return errx
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			errx = erx.WithArgs(errx, erx.SeverityInfo, custom_errors.NoRowsInResultSet)
+			u.lgr.Info(fmt.Sprintf("[Database] [Users] [VerifyUser] [Scan] [ErrSQLNoResultsInSet] %s", errx.String()))
+			return errx
+		}
+		u.lgr.Debug(fmt.Sprintf("[Database] [Users] [VerifyUser] [Scan] %s", errx.Error()))
+		return errx
+	}
+
+	var count int64
+	if count, err = res.RowsAffected(); err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			u.lgr.Error(fmt.Sprintf("[Database] [Users] [VerifyUser] [RowsAffected] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return errx
+		}
+		u.lgr.Debug(fmt.Sprintf("[Database] [Users] [VerifyUser] [RowsAffected] %s", err.Error()))
+		return errx
+	}
+
+	if count == 0 {
+		return erx.WithArgs(custom_errors.NoRowsAffected, erx.SeverityInfo)
+	}
+
+	return nil
+}
+
+func (u *users) UpdateVerificationToken(emailID string, vetkn string) *erx.Erx {
+	query := `UPDATE users SET verification_key = @veKey WHERE email=@email`
+
+	_, err := u.db.Exec(query, sql.Named("email", emailID), sql.Named("veKey", vetkn))
+	if err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			u.lgr.Error(fmt.Sprintf("[Database] [Users] [UpdateVerificationToken] [Scan] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return errx
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			errx = erx.WithArgs(errx, erx.SeverityInfo, custom_errors.NoRowsInResultSet)
+			u.lgr.Info(fmt.Sprintf("[Database] [Users] [UpdateVerificationToken] [Scan] [ErrSQLNoResultsInSet] %s", errx.String()))
+			return errx
+		}
+		u.lgr.Debug(fmt.Sprintf("[Database] [Users] [UpdateVerificationToken] [Scan] %s", errx.Error()))
+		return errx
+	}
+
+	return nil
+}
+
+func (u *users) GetVerificationStatus(emailID string) (bool, string, *erx.Erx) {
+	query := `SELECT verified, verification_key FROM users WHERE email=@email;`
+
+	var verified bool
+	var verificationKey string
 
 	row := u.db.QueryRow(query, sql.Named("email", emailID))
-	err := row.Scan(&userID, &encryptionKey, &keyHash)
+	err := row.Scan(&verified, &verificationKey)
+	if err != nil {
+		sqlErr, errx := checkForSQLError(err)
+		if sqlErr != nil {
+			errx = erx.WithArgs(errx, erx.SeverityError)
+			u.lgr.Error(fmt.Sprintf("[Database] [Users] [GetVerificationStatus] [Scan] [sqlErr] %d : %s", sqlErr.Number, sqlErr.Error()))
+			return false, "", errx
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			errx = erx.WithArgs(errx, erx.SeverityInfo, custom_errors.NoRowsInResultSet)
+			u.lgr.Info(fmt.Sprintf("[Database] [Users] [GetVerificationStatus] [Scan] [ErrSQLNoResultsInSet] %s", errx.String()))
+			return false, "", errx
+		}
+		u.lgr.Debug(fmt.Sprintf("[Database] [Users] [GetVerificationStatus] [Scan] %s", errx.Error()))
+		return false, "", errx
+	}
+
+	return verified, verificationKey, nil
+}
+
+func (u *users) Get(emailID string) (types.User, *erx.Erx) {
+	query := `SELECT user_id, encryption_key, key_hash, verification_key, verified FROM users WHERE email=@email;`
+
+	var userID types.UserID
+	var encryptionKey, keyHash, verificationKey string
+	var verificationStatus bool
+
+	row := u.db.QueryRow(query, sql.Named("email", emailID))
+	err := row.Scan(&userID, &encryptionKey, &keyHash, &verificationKey, &verificationStatus)
 	if err != nil {
 		sqlErr, errx := checkForSQLError(err)
 		if sqlErr != nil {
@@ -53,13 +146,14 @@ func (u *users) Get(emailID string) (types.User, *erx.Erx) {
 	}, nil
 }
 
-func (u *users) Create(emailID string, encryptionKey string, keyHash string) (types.UserID, *erx.Erx) {
-	query := `INSERT INTO users (email, encryption_key, key_hash) OUTPUT inserted.user_id
-VALUES (@email, @key, @hash);`
+func (u *users) Create(emailID string, encryptionKey string, keyHash string, vetkn string) (types.UserID, *erx.Erx) {
+	query := `INSERT INTO users (email, encryption_key, key_hash, verification_key) OUTPUT inserted.user_id
+	VALUES (@email, @key, @hash, @veKey);`
 
 	var userID types.UserID
 
-	row := u.db.QueryRow(query, sql.Named("email", emailID), sql.Named("key", encryptionKey), sql.Named("hash", keyHash))
+	row := u.db.QueryRow(query, sql.Named("email", emailID), sql.Named("key", encryptionKey),
+		sql.Named("hash", keyHash), sql.Named("veKey", vetkn))
 	err := row.Err()
 	if err != nil {
 		sqlErr, errx := checkForSQLError(err)

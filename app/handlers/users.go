@@ -19,7 +19,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
+func CreateUserHandler(svc service.UsersService, veCfg *config.VerificationEmailConfig, cfg *config.JWTConfig, lgr *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		d, err := ioutil.ReadAll(req.Body)
 		if err != nil {
@@ -28,7 +28,7 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 			return
 		}
 
-		var data types.UserRequest
+		var data types.CreateUserRequest
 		err = json.Unmarshal(d, &data)
 		if err != nil {
 			lgr.Debug(fmt.Sprintf("[Handlers] [CreateUserHandler] [Unmarshal] %v", err))
@@ -53,8 +53,9 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 		decryptedKey := make([]byte, len(key))
 		copy(decryptedKey, key)
 		utils.EncryptKey(key, data.Password, lgr)
+		verificationToken := utils.RandString(veCfg.GetTokenLength())
 
-		usr, errx := svc.CreateUser(data.Email, key, hash)
+		_, errx := svc.CreateUser(data.Email, key, hash, verificationToken)
 		if errx != nil {
 			if errx.Kind() == custom_errors.DuplicateRecordInsertion {
 				utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "user already exists"), w, lgr)
@@ -66,17 +67,19 @@ func CreateUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap
 			return
 		}
 
-		accessToken, refreshToken, err := utils.IssueTokens(usr.ID, decryptedKey, cfg, lgr)
-		if err != nil {
-			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [CreateUserHandler] [IssueTokens] %s", errx.Error()))
-			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, err.Error()), w, lgr)
-			return
+		resp := types.CreateUserResponse{
+			VerificationEmailSent: false,
+			UserCreated:           true,
 		}
 
-		resp := types.UserResponse{
-			AuthenticationToken: accessToken,
-			RefreshToken:        refreshToken,
+		errx = svc.SendVerificationEmail(data.Email, verificationToken, data.VerificationCallbackURL, veCfg)
+		if errx != nil {
+			errMsg := fmt.Sprintf("[Handlers] [Users] [CreateUserHandler] [SendVerificationEmail] %s", errx.Error())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
+			return
 		}
+		resp.VerificationEmailSent = true
 
 		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
 	}
@@ -91,7 +94,7 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 			return
 		}
 
-		var data types.UserRequest
+		var data types.LoginUserRequest
 		err = json.Unmarshal(d, &data)
 		if err != nil {
 			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [Unmarshal] %v", err))
@@ -139,16 +142,108 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 			return
 		}
 
-		accessToken, refreshToken, err := utils.IssueTokens(usr.ID, key, cfg, lgr)
+		resp := types.LoginUserResponse{
+			VerificationPending: true,
+		}
+
+		if !usr.Verified {
+			lgr.Info(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [VerifiedCheck] %v", err))
+			utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
+			return
+		}
+
+		resp.AuthenticationToken, resp.RefreshToken, err = utils.IssueTokens(usr.ID, key, cfg, lgr)
 		if err != nil {
-			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [DecodeString] Hash %v", err))
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [IssueTokens] %v", err))
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, err.Error()), w, lgr)
 			return
 		}
 
-		resp := types.UserResponse{
-			AuthenticationToken: accessToken,
-			RefreshToken:        refreshToken,
+		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
+	}
+}
+
+func ActivateUserHandler(svc service.UsersService, lgr *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		d, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [ReadAll] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "could not read request body"), w, lgr)
+			return
+		}
+
+		var data types.ActivateUserRequest
+		err = json.Unmarshal(d, &data)
+		if err != nil {
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [Unmarshal] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "an error occoured when unmarshaling JSON"), w, lgr)
+			return
+		}
+
+		errx := svc.ActivateUser(data.VerificationToken)
+		if errx != nil {
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [ActivateUser] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, err.Error()), w, lgr)
+			return
+		}
+
+		resp := types.ActivateUserResponse{
+			VerificationPending: false,
+		}
+
+		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
+	}
+}
+
+func ResendValidationHandler(svc service.UsersService, veCfg *config.VerificationEmailConfig, lgr *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		d, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [ReadAll] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "could not read request body"), w, lgr)
+			return
+		}
+
+		var data types.ResendVerificationRequest
+		err = json.Unmarshal(d, &data)
+		if err != nil {
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [Unmarshal] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "an error occoured when unmarshaling JSON"), w, lgr)
+			return
+		}
+		data.Email = strings.ToLower(data.Email)
+
+		verified, token, errx := svc.GetVerificationStatus(data.Email)
+		if errx != nil {
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [ActivateUser] %v", err))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
+			return
+		}
+
+		if verified {
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "user is already verified"), w, lgr)
+		}
+
+		if token == "" {
+			token = utils.RandString(veCfg.GetTokenLength())
+			errx = svc.UpdateVerificationToken(data.Email, token)
+			if errx != nil {
+				lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [UpdateVerificationToken] %v", errx))
+				utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.Error()), w, lgr)
+				return
+			}
+		}
+
+		errx = svc.SendVerificationEmail(data.Email, token, data.VerificationCallbackURL, veCfg)
+		if errx != nil {
+			errMsg := fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [SendVerificationEmail] %s", errx.Error())
+			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.Error()), w, lgr)
+			return
+		}
+
+		resp := types.ResendVerificationResponse{
+			VerificationEmailSent: true,
 		}
 
 		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)

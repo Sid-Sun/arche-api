@@ -63,7 +63,7 @@ func (f *folders) Get(folderID types.FolderID, userID types.UserID) ([]types.Fol
 
 		folderContents = append(folderContents, types.FolderContent{
 			NoteID: noteID,
-			Name: name,
+			Name:   name,
 		})
 	}
 

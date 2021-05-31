@@ -20,7 +20,7 @@ func Start(cfg *config.Config, lgr *zap.Logger) {
 	}
 	db := database.NewDBInstance(dbClient, lgr)
 	svc := service.NewDBService(db, lgr)
-	rtr := router.NewRouter(svc, cfg.JWT, lgr)
+	rtr := router.NewRouter(svc, cfg.JWT, cfg.VECfg, lgr)
 
 	srv := &http.Server{
 		Addr:    cfg.HTTP.GetListenAddr(),

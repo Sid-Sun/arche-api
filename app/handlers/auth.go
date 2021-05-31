@@ -46,9 +46,10 @@ func RefreshTokenHandler(jwtCfg *config.JWTConfig, lgr *zap.Logger) http.Handler
 			return
 		}
 
-		resp := types.UserResponse{
+		resp := types.LoginUserResponse{
 			AuthenticationToken: tkn,
 			RefreshToken:        token,
+			VerificationPending: false,
 		}
 		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
 	}
