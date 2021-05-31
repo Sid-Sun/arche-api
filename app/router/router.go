@@ -21,7 +21,7 @@ func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, veCfg *config.Ver
 		r.Post("/signup", handlers.CreateUserHandler(svc.Users, veCfg, jwtCfg, lgr))
 		r.Post("/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))
 		r.Post("/activate", handlers.ActivateUserHandler(svc.Users, lgr))
-		r.Post("/resendVerification", handlers.ActivateUserHandler(svc.Users, lgr))
+		r.Post("/resendVerification", handlers.ResendValidationHandler(svc.Users, veCfg, lgr))
 	})
 
 	rtr.Route("/v1/session", func(r chi.Router) {

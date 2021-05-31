@@ -1,6 +1,8 @@
 package initializers
 
 import (
+	"fmt"
+
 	"github.com/mailgun/mailgun-go"
 	"github.com/sid-sun/arche-api/config"
 )
@@ -12,6 +14,7 @@ type MailClient interface {
 }
 
 func InitMGClient(emailConfig *config.EmailConfig) MailClient {
+	fmt.Println(emailConfig.GetAPIKey(), emailConfig.GetDomain())
 	mgImpl := mailgun.NewMailgun(emailConfig.GetDomain(), emailConfig.GetAPIKey())
 	return mgImpl
 }

@@ -71,15 +71,18 @@ func CreateUserHandler(svc service.UsersService, veCfg *config.VerificationEmail
 			VerificationEmailSent: false,
 			UserCreated:           true,
 		}
+		fmt.Printf("here")
 
 		errx = svc.SendVerificationEmail(data.Email, verificationToken, data.VerificationCallbackURL, veCfg)
 		if errx != nil {
+			fmt.Printf(errx.String())
 			errMsg := fmt.Sprintf("[Handlers] [Users] [CreateUserHandler] [SendVerificationEmail] %s", errx.Error())
 			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
 			utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
 			return
 		}
 		resp.VerificationEmailSent = true
+		fmt.Printf("where")
 
 		utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
 	}
@@ -236,6 +239,7 @@ func ResendValidationHandler(svc service.UsersService, veCfg *config.Verificatio
 
 		errx = svc.SendVerificationEmail(data.Email, token, data.VerificationCallbackURL, veCfg)
 		if errx != nil {
+			fmt.Println(errx.String())
 			errMsg := fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [SendVerificationEmail] %s", errx.Error())
 			utils.LogWithSeverity(errMsg, errx.Severity, lgr)
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusInternalServerError, errx.Error()), w, lgr)

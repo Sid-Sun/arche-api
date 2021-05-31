@@ -90,7 +90,7 @@ func (u *users) GetVerificationStatus(emailID string) (bool, string, *erx.Erx) {
 	query := `SELECT verified, verification_key FROM users WHERE email=@email;`
 
 	var verified bool
-	var verificationKey string
+	var verificationKey sql.NullString
 
 	row := u.db.QueryRow(query, sql.Named("email", emailID))
 	err := row.Scan(&verified, &verificationKey)
@@ -110,14 +110,15 @@ func (u *users) GetVerificationStatus(emailID string) (bool, string, *erx.Erx) {
 		return false, "", errx
 	}
 
-	return verified, verificationKey, nil
+	return verified, verificationKey.String, nil
 }
 
 func (u *users) Get(emailID string) (types.User, *erx.Erx) {
 	query := `SELECT user_id, encryption_key, key_hash, verification_key, verified FROM users WHERE email=@email;`
 
 	var userID types.UserID
-	var encryptionKey, keyHash, verificationKey string
+	var encryptionKey, keyHash string
+	var verificationKey sql.NullString
 	var verificationStatus bool
 
 	row := u.db.QueryRow(query, sql.Named("email", emailID))
@@ -139,10 +140,12 @@ func (u *users) Get(emailID string) (types.User, *erx.Erx) {
 	}
 
 	return types.User{
-		ID:            userID,
-		Email:         emailID,
-		EncryptionKey: encryptionKey,
-		KeyHash:       keyHash,
+		ID:              userID,
+		Email:           emailID,
+		EncryptionKey:   encryptionKey,
+		KeyHash:         keyHash,
+		VerificationKey: verificationKey.String,
+		Verified:        verificationStatus,
 	}, nil
 }
 

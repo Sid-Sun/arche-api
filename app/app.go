@@ -19,7 +19,10 @@ func Start(cfg *config.Config, lgr *zap.Logger) {
 		lgr.Fatal(fmt.Sprintf("[App] [Start] [InitDBClient] %v", err))
 	}
 	db := database.NewDBInstance(dbClient, lgr)
-	svc := service.NewDBService(db, lgr)
+
+	mc := initializers.InitMGClient(cfg.EmailConfig)
+
+	svc := service.NewService(db, mc, lgr)
 	rtr := router.NewRouter(svc, cfg.JWT, cfg.VECfg, lgr)
 
 	srv := &http.Server{
