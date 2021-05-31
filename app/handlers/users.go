@@ -150,11 +150,12 @@ func LoginUserHandler(svc service.UsersService, cfg *config.JWTConfig, lgr *zap.
 		}
 
 		if !usr.Verified {
-			lgr.Info(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [VerifiedCheck] %v", err))
+			lgr.Info("[Handlers] [Users] [LoginUserHandler] [VerifiedCheck] User is not verified")
 			utils.WriteSuccessResponse(http.StatusOK, resp, w, lgr)
 			return
 		}
 
+		resp.VerificationPending = false
 		resp.AuthenticationToken, resp.RefreshToken, err = utils.IssueTokens(usr.ID, key, cfg, lgr)
 		if err != nil {
 			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [LoginUserHandler] [IssueTokens] %v", err))
@@ -218,13 +219,14 @@ func ResendValidationHandler(svc service.UsersService, veCfg *config.Verificatio
 
 		verified, token, errx := svc.GetVerificationStatus(data.Email)
 		if errx != nil {
-			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [ActivateUser] %v", err))
-			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, err.Error()), w, lgr)
+			lgr.Debug(fmt.Sprintf("[Handlers] [Users] [ActivateUserHandler] [ActivateUser] %v", errx))
+			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, errx.Error()), w, lgr)
 			return
 		}
 
 		if verified {
 			utils.WriteFailureResponse(resperr.NewResponseError(http.StatusBadRequest, "user is already verified"), w, lgr)
+			return
 		}
 
 		if token == "" {
