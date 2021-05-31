@@ -12,8 +12,8 @@ type VerificationEmailConfig struct {
 
 func newDefaultVEConfig() *VerificationEmailConfig {
 	return &VerificationEmailConfig{
-		senderName:     "Bouncer",
-		senderUsername: "bouncer",
+		senderName:     "OnlyNotes",
+		senderUsername: "no-reply",
 		emailSubject:   "Verify your sign-up and get started!",
 		tokenLength:    12,
 		emailBody: `
