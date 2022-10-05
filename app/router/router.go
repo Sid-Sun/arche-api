@@ -10,15 +10,19 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, lgr *zap.Logger) *chi.Mux {
+func NewRouter(svc *service.Service, jwtCfg *config.JWTConfig, veCfg *config.VerificationEmailConfig, lgr *zap.Logger) *chi.Mux {
 	rtr := chi.NewRouter()
 
 	rtr.Use(middleware.Recoverer)
 	rtr.Use(middlewares.WithContentJSON)
 	rtr.Use(middlewares.WithCors())
 
-	rtr.Post("/v1/signup", handlers.CreateUserHandler(svc.Users, jwtCfg, lgr))
-	rtr.Post("/v1/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))
+	rtr.Route("/v1/users", func(r chi.Router) {
+		r.Post("/signup", handlers.CreateUserHandler(svc.Users, veCfg, jwtCfg, lgr))
+		r.Post("/login", handlers.LoginUserHandler(svc.Users, jwtCfg, lgr))
+		r.Post("/activate", handlers.ActivateUserHandler(svc.Users, lgr))
+		r.Post("/resendVerification", handlers.ResendValidationHandler(svc.Users, veCfg, lgr))
+	})
 
 	rtr.Route("/v1/session", func(r chi.Router) {
 		r.With(middlewares.JWTAuth(jwtCfg, lgr)).Get("/validate", handlers.ValidateTokenHandler(lgr))

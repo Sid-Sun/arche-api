@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/sid-sun/arche-api/app/database"
+	"github.com/sid-sun/arche-api/app/initializers"
 	"go.uber.org/zap"
 )
 
@@ -11,11 +12,12 @@ type Service struct {
 	Notes   NotesService
 }
 
-func NewDBService(db *database.DB, lgr *zap.Logger) *Service {
+func NewService(db *database.DB, mc initializers.MailClient, lgr *zap.Logger) *Service {
 	return &Service{
 		Users: &users{
-			db:  db,
-			lgr: lgr,
+			db:         db,
+			lgr:        lgr,
+			mailClient: mc,
 		},
 		Folders: &folders{
 			db:  db,

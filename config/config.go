@@ -5,10 +5,12 @@ import (
 )
 
 type Config struct {
-	env      string
-	HTTP     HTTPServerConfig
-	DBConfig *DBConfig
-	JWT      *JWTConfig
+	env         string
+	HTTP        HTTPServerConfig
+	DBConfig    *DBConfig
+	JWT         *JWTConfig
+	EmailConfig *EmailConfig
+	VECfg       *VerificationEmailConfig
 }
 
 func (c *Config) GetEnv() string {
@@ -49,5 +51,10 @@ func Load() (*Config, error) {
 			secret: viper.GetString("JWT_SECRET"),
 			ttl:    ttl,
 		},
+		EmailConfig: &EmailConfig{
+			domain: viper.GetString("MG_DOMAIN"),
+			apiKey: viper.GetString("MG_API_KEY"),
+		},
+		VECfg: newDefaultVEConfig(),
 	}, nil
 }

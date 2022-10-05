@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 func Start(cfg *config.Config, lgr *zap.Logger) {
@@ -19,8 +20,11 @@ func Start(cfg *config.Config, lgr *zap.Logger) {
 		lgr.Fatal(fmt.Sprintf("[App] [Start] [InitDBClient] %v", err))
 	}
 	db := database.NewDBInstance(dbClient, lgr)
-	svc := service.NewDBService(db, lgr)
-	rtr := router.NewRouter(svc, cfg.JWT, lgr)
+
+	mc := initializers.InitMGClient(cfg.EmailConfig)
+
+	svc := service.NewService(db, mc, lgr)
+	rtr := router.NewRouter(svc, cfg.JWT, cfg.VECfg, lgr)
 
 	srv := &http.Server{
 		Addr:    cfg.HTTP.GetListenAddr(),
@@ -35,7 +39,7 @@ func Start(cfg *config.Config, lgr *zap.Logger) {
 		}
 	}()
 
-	ch := make(chan os.Signal)
-	signal.Notify(ch, os.Interrupt, os.Kill)
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
 	<-ch
 }

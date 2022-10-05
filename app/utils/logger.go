@@ -6,7 +6,7 @@ import (
 )
 
 func LogWithSeverity(text string, severity erx.Severity, lgr *zap.Logger) {
-	switch severity { 
+	switch severity {
 	case erx.SeverityError:
 		lgr.Error(text)
 	case erx.SeverityInfo:
